@@ -446,6 +446,10 @@ module iotest_mod
       err = err + abs(dxi2(i) - dxi2_old(i))
       if (err > 0.d0) then
         print*, 'Error in y grid values at i=',i,'err=',err
+        print*, x2(i), x2_old(i)
+        print*, xi2(i), xi2_old(i)
+        print*, dx2(i), dx2_old(i)
+        print*, dxi2(i), dxi2_old(i)
         numerr = numerr + 1
       endif
     end do

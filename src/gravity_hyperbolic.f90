@@ -71,6 +71,7 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
  integer:: i,j,k,n,jb,kb,grungen
  integer:: il,ir,jl,jr,kl,kr
  real(8):: faco, facn, fact, vol
+ integer :: ii
 
 !-----------------------------------------------------------------------------
 
@@ -115,16 +116,17 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
     do k = ks_global, ke_global, kb+1
      do j = js_global, je_global, jb+1
       do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1
-       vol = sum(dvol(i,j:j+jb,k:k+kb))
+      !  vol = sum(dvol(i,j:j+jb,k:k+kb))
+       vol = sum_global_array(dvol, i, i, j, j+jb, k, k+kb)
 
        il = max(i,is); ir = min(i,ie)
        jl = max(j,js); jr = min(j+jb,je)
        kl = max(k,ks); kr = min(k+kb,ke)
 
        grvphi(il:ir,jl:jr,kl:kr) = &
-        sum_global_array(grvphi, i, i, j, j+jb, k, k+kb, weight=dvol) / vol
+        sum_global_array(grvphi, i, i, j, j+jb, k, k+kb, weight=dvol, fac=1.d0/vol)
        grvpsi(il:ir,jl:jr,kl:kr) = &
-        sum_global_array(grvpsi, i, i, j, j+jb, k, k+kb, weight=dvol) / vol
+        sum_global_array(grvpsi, i, i, j, j+jb, k, k+kb, weight=dvol, fac=1.d0/vol)
       end do
      end do
     end do
@@ -133,8 +135,13 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
 !$omp end single
 ! --------------------------------------------------------------------
 
+ do i = is,ie
+  write(2,*) i, grvpsi(i,js,ks), grvphi(i,js,ks)
  end do
 
+ stop
+
+ end do
 ! Damping of grvpsi by separation of variables
 !$omp do private(i,j,k) collapse(3)
  do k = ks, ke

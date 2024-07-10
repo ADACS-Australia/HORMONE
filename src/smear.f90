@@ -91,7 +91,7 @@ end subroutine smear
   if(compswitch>=2)then
    do n = 1, spn
     if (is<=i .and. i<=ie) spc(n,i,jl:jr,kl:kr) = &
-    sum_global_array(u,i,i,js,je,ks,ke,icnt, l_weight2=n, weight=dvol, weight2=spc ) / mtot
+    sum_global_array(u,i,i,js,je,ks,ke,icnt, l_weight2=n, weight=dvol, weight2=spc , fac=1.d0/mtot)
    end do
   end if
 
@@ -101,12 +101,44 @@ end subroutine smear
 !!$  return
 
   momtot=0d0;etot=0d0
+  n=0
+  block
+    real(8) :: term1p, term2p, term3p
+    real(8) :: term1n, term2n, term3n
+    real(8) :: term(3)
+    term1p = 0d0; term2p = 0d0; term3p = 0d0
+    term1n = 0d0; term2n = 0d0; term3n = 0d0
   if (is<=i .and. i<=ie) then
-   do j = jl, jr
+
     do k = kl, kr
+      do j = jl, jr
      xcar = polcar([x1(i),x2(j),x3(k)])
      call get_vcar(xcar,x3(k),u(i,j,k,imo1),u(i,j,k,imo2),u(i,j,k,imo3),vcar)
-     momtot = momtot + vcar*dvol(i,j,k)! add up momenta
+     n = n+1
+    !  print*,vcar*dvol(i,j,k)
+     term = vcar*dvol(i,j,k)/mtot
+     write(1, *) n,term
+
+     if (term(1) > 0d0) then
+       term1p = term1p + term(1)
+     else
+       term1n = term1n + term(1)
+     end if
+
+    if (term(2) > 0d0) then
+      term2p = term2p + term(2)
+    else
+      term2n = term2n + term(2)
+    end if
+
+    if (term(3) > 0d0) then
+      term3p = term3p + term(3)
+    else
+      term3n = term3n + term(3)
+    end if
+
+     momtot = momtot + vcar*dvol(i,j,k)/mtot! add up momenta
+    !  write(1,*) n,momtot
      etot = etot + u(i,j,k,iene)*dvol(i,j,k)! add up energy
      if(gravswitch>0)then
       etot = etot + u(i,j,k,icnt)*totphi(i,j,k)*dvol(i,j,k)! and gravitational ene
@@ -115,8 +147,16 @@ end subroutine smear
    end do
   endif
   call allreduce_mpi('sum',momtot)
-  vave = momtot/mtot ! get average cartesian velocity
+  ! vave = momtot/mtot ! get average cartesian velocity
+  vave = momtot
   if (is<=i .and. i<=ie) u(i,jl:jr,kl:kr,icnt) = mtot/vol ! density
+
+  print*,vave(1),vave(2),vave(3)
+  ! print*,term1p/mtot+term1n/mtot,term2p/mtot+term2n/mtot,term3p/mtot+term3n/mtot
+  ! print*,term1p/mtot,term1n/mtot,term2p/mtot,term2n/mtot,term3p/mtot,term3n/mtot
+  print*,term1p+term1n,term2p+term2n,term3p+term3n
+  end block
+  stop
 
   if (is<=i .and. i<=ie) then
    do j = jl, jr

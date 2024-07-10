@@ -28,6 +28,8 @@ module mpi_domain
    integer :: left_rank(3), right_rank(3)
 #endif
 
+   logical :: use_intrinsic_sum = .false.
+
    contains
 
    subroutine domain_decomp
@@ -621,7 +623,7 @@ module mpi_domain
 
    end function
 
-   function sum_global_array_scalar(array, is_, ie_, js_, je_, ks_, ke_, weight) result(arr_sum)
+   function sum_global_array_scalar(array, is_, ie_, js_, je_, ks_, ke_, weight, fac) result(arr_sum)
       use mpi_utils, only: allreduce_mpi
       ! Given some indices is_, ie_, js_, je_, ks_, ke_ that can be applied to the full domain,
       ! return the sum of those elements across all tasks
@@ -629,8 +631,10 @@ module mpi_domain
       integer, intent(in) :: is_, ie_, js_, je_, ks_, ke_
       real(8), intent(in), allocatable :: array(:,:,:)
       real(8), intent(in), allocatable, optional :: weight(:,:,:)
+      real(8), intent(in), optional :: fac
       real(8) :: arr_sum
       integer :: il,ir,jl,jr,kl,kr
+      real(8), allocatable :: array1D(:)
 
       il = max(is_,is)
       ir = min(ie_,ie)
@@ -639,17 +643,31 @@ module mpi_domain
       kl = max(ks_,ks)
       kr = min(ke_,ke)
 
+      allocate(array1D((ir-il+1)*(jr-jl+1)*(kr-kl+1)))
+
       if (present(weight)) then
-         arr_sum = sum(array(il:ir, jl:jr, kl:kr) &
-                     * weight(il:ir, jl:jr, kl:kr) )
+         array1D = pack(array(il:ir,jl:jr,kl:kr)*weight(il:ir,jl:jr,kl:kr),.true.)
       else
-         arr_sum = sum(array(il:ir, jl:jr, kl:kr))
-      endif
+         array1D = pack(array(il:ir,jl:jr,kl:kr),.true.)
+      end if
+
+      if (present(fac)) then
+         array1D = array1D*fac
+      end if
+
+      if (use_intrinsic_sum) then
+         arr_sum = sum(array1D)
+      else
+         arr_sum = sum_explicit(array1D)
+      end if
+
       call allreduce_mpi('sum', arr_sum)
 
-    end function sum_global_array_scalar
+      deallocate(array1D)
 
-    function sum_global_array_spc(array, is_, ie_, js_, je_, ks_, ke_, l_array, l_weight2, weight, weight2) result(arr_sum)
+   end function sum_global_array_scalar
+
+   function sum_global_array_spc(array, is_, ie_, js_, je_, ks_, ke_, l_array, l_weight2, weight, weight2, fac) result(arr_sum)
       use mpi_utils, only: allreduce_mpi
       ! Given some indices is_, ie_, js_, je_, ks_, ke_ that can be applied to the full domain,
       ! return the sum of those elements across all tasks
@@ -658,8 +676,10 @@ module mpi_domain
       integer, intent(in), optional :: l_weight2
       real(8), intent(in), allocatable :: array(:,:,:,:)
       real(8), intent(in), allocatable, optional :: weight(:,:,:), weight2(:,:,:,:)
+      real(8), intent(in), optional :: fac
       real(8) :: arr_sum
       integer :: il,ir,jl,jr,kl,kr
+      real(8), allocatable :: array1D(:)
 
       il = max(is_,is)
       ir = min(ie_,ie)
@@ -668,20 +688,60 @@ module mpi_domain
       kl = max(ks_,ks)
       kr = min(ke_,ke)
 
+      allocate(array1D((ir-il+1)*(jr-jl+1)*(kr-kl+1)))
+
       if (present(weight)) then
          if (present(weight2)) then
-         arr_sum = sum( array(il:ir, jl:jr, kl:kr, l_array) &
-                     * weight(il:ir, jl:jr, kl:kr) &
-         * weight2(l_weight2, il:ir, jl:jr, kl:kr) )
+            array1D = pack(array(il:ir,jl:jr,kl:kr,l_array)*weight(il:ir,jl:jr,kl:kr)*weight2(il:ir,jl:jr,kl:kr,l_weight2),.true.)
          else
-         arr_sum = sum( array(il:ir, jl:jr, kl:kr, l_array) &
-                     * weight(il:ir, jl:jr, kl:kr) )
-         endif
+            array1D = pack(array(il:ir,jl:jr,kl:kr,l_array)*weight(il:ir,jl:jr,kl:kr),.true.)
+         end if
       else
-         arr_sum = sum( array(il:ir, jl:jr, kl:kr, l_array) )
-      endif
+         array1D = pack(array(il:ir,jl:jr,kl:kr,l_array),.true.)
+      end if
+
+      if (present(fac)) then
+         array1D = array1D*fac
+      end if
+
+      if (use_intrinsic_sum) then
+         arr_sum = sum(array1D)
+      else
+         arr_sum = sum_explicit(array1D)
+      end if
+
       call allreduce_mpi('sum', arr_sum)
 
-    end function sum_global_array_spc
+      deallocate(array1D)
+
+   end function sum_global_array_spc
+
+   function sum_explicit(array) result(arr_sum)
+      real(8), intent(in) :: array(:)
+      real(8) :: arr_sum
+      real(8) :: tot,comp,y,temp
+      integer :: i
+      logical, parameter :: use_kahan = .true.
+
+      ! Add elements of the array, using limited precision.
+
+      tot = 0.0d0
+      comp = 0.0d0                   ! no previous omissions to carry forward.
+
+      do i = lbound(array,1), ubound(array,1)
+
+         if (use_kahan) then
+            y = array(i) - comp      ! combine the next value with the compensation.
+            temp = tot + y           ! augment the sum, temporarily in t.
+            comp = (temp - tot) - y  ! catch what part of y didn't get added to t.
+            tot = temp               ! place the sum.
+         else
+            tot = tot + array(i)
+         end if
+
+      end do
+
+      arr_sum = tot
+   end function sum_explicit
 
 end module mpi_domain

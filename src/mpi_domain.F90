@@ -28,7 +28,8 @@ module mpi_domain
    integer :: left_rank(3), right_rank(3)
 #endif
 
-   logical :: use_intrinsic_sum = .false.
+   logical, parameter :: use_intrinsic_sum = .false.
+   logical, parameter :: use_kahan = .true.
 
    contains
 
@@ -721,7 +722,6 @@ module mpi_domain
       real(8) :: arr_sum
       real(8) :: tot,comp,y,temp
       integer :: i
-      logical, parameter :: use_kahan = .true.
 
       ! Add elements of the array, using limited precision.
 

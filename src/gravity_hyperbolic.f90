@@ -65,20 +65,20 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
  use grid
  use gravmod,only:grvphiorg,grvphi,grvpsi,lapphi,hgsrc,gsrc,hgcfl
  use rungekutta_mod,only:get_runge_coeff
- use mpi_domain,only:exchange_gravity_mpi
+ use mpi_domain,only:exchange_gravity_mpi,sum_global_array
 
  real(8),intent(in):: dtg,cgrav_now,cgrav_old
- integer:: i,j,k,n, jb, kb, grungen
+ integer:: i,j,k,n,jb,kb,grungen
+ integer:: il,ir,jl,jr,kl,kr
  real(8):: faco, facn, fact, vol
 
 !-----------------------------------------------------------------------------
 
-! Perform MPI neighbour exchange
- call exchange_gravity_mpi
-
 !$omp parallel
  do grungen = 1, grktype
 !$omp single
+  ! Perform MPI neighbour exchange
+  call exchange_gravity_mpi
   call get_runge_coeff(grungen,grktype,faco,fact,facn)
 !$omp end single
 
@@ -103,28 +103,33 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
 !$omp end do
 
 ! Smear gravity in central regions -----------------------------------
+!$omp single
   if(fmr_max>0)then
    do n = 1, fmr_max
     if(fmr_lvl(n)==0)cycle
-    jb=min(2**(fmr_max-n+1),je)-1 ; kb=min(2**(fmr_max-n+1),ke)-1
+    jb=min(2**(fmr_max-n+1),je_global)-1 ; kb=min(2**(fmr_max-n+1),ke_global)-1
     if(n==1)then
-     jb=je-js; kb=ke-ks
+     jb=je_global-js_global; kb=ke_global-ks_global
     end if
-!$omp do private(i,j,k,vol) collapse(3)
-    do k = ks, ke, kb+1
-     do j = js, je, jb+1
-      do i = is+sum(fmr_lvl(0:n-1)), is+sum(fmr_lvl(0:n))-1
+    do k = ks_global, ke_global, kb+1
+     do j = js_global, je_global, jb+1
+      do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1
        vol = sum(dvol(i,j:j+jb,k:k+kb))
-       grvphi(i,j:j+jb,k:k+kb) = sum(grvphi(i,j:j+jb,k:k+kb) &
-                                      *dvol(i,j:j+jb,k:k+kb)) / vol
-       grvpsi(i,j:j+jb,k:k+kb) = sum(grvpsi(i,j:j+jb,k:k+kb) &
-                                      *dvol(i,j:j+jb,k:k+kb)) / vol
+
+       il = max(i,is); ir = min(i,ie)
+       jl = max(j,js); jr = min(j+jb,je)
+       kl = max(k,ks); kr = min(k+kb,ke)
+
+       grvphi(il:ir,jl:jr,kl:kr) = &
+        sum_global_array(grvphi, i, i, j, j+jb, k, k+kb, weight=dvol) / vol
+       grvpsi(il:ir,jl:jr,kl:kr) = &
+        sum_global_array(grvpsi, i, i, j, j+jb, k, k+kb, weight=dvol) / vol
       end do
      end do
     end do
-!$omp end do
    end do
   end if
+!$omp end single
 ! --------------------------------------------------------------------
 
  end do
@@ -157,10 +162,13 @@ subroutine hg_boundary_conditions
  use settings
  use grid
  use gravmod
+ use mpi_domain,only:exchange_gravity_mpi
 
  integer:: i,j,k
 
 !-----------------------------------------------------------------------------
+
+ call exchange_gravity_mpi
 
  !$omp parallel
  select case(crdnt)
@@ -219,8 +227,10 @@ subroutine hg_boundary_conditions
    !$omp do private(i,j) collapse(2)
    do j = js, je
     do i = is, ie
-     if(ks==ks_global) grvphi(i,j,ks-1) = grvphi(i,j,ke)
-     if(ke==ke_global) grvphi(i,j,ke+1) = grvphi(i,j,ks)
+     if(ks==ks_global .and. ke==ke_global) then
+      grvphi(i,j,ks-1) = grvphi(i,j,ke)
+      grvphi(i,j,ke+1) = grvphi(i,j,ks)
+     end if
     end do
    end do
    !$omp end do

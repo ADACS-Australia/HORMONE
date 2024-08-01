@@ -100,7 +100,7 @@ contains
   ch = cfmax
 
   if(gravswitch==3)then
-   print*,'timestep routine', dt, hgcfl, minval(dtg)
+   print*,'timestep routine', dt, minval(dtg), minval(dti)
    dtgrav = min(dt,hgcfl*minval(dtg))
    cgrav2 = cgrav**2
   end if

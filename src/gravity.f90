@@ -169,6 +169,9 @@ subroutine gravity_relax
  call timestep
  cgrav_old = cgrav
 
+ print*,'cgrav=',cgrav
+ print*,'dtgrav=',dtgrav
+
  grktype_org = grktype
  grktype = 1
 

@@ -158,7 +158,7 @@ jobs:
         if [[ "${{ matrix.mpi }}" == "yes" ]]; then
           mpirun -np 2 --oversubscribe ./hormone
         else
-          OMP_NUM_THREADS=1 ./hormone
+          ./hormone
         fi
 
   compiler-warnings:

@@ -82,6 +82,8 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
   call get_runge_coeff(grungen,grktype,faco,fact,facn)
 !$omp end single
 
+!$omp barrier
+
 ! First set flux and source term
   call get_lapphi_hgsrc(grvphi,gsrc,lapphi,hgsrc)
 
@@ -101,6 +103,8 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
    end do
   end do
 !$omp end do
+
+  !$omp barrier
 
 ! Smear gravity in central regions -----------------------------------
 !$omp single
@@ -130,6 +134,8 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
    end do
   end if
 !$omp end single
+
+  !$omp barrier
 ! --------------------------------------------------------------------
 
  end do

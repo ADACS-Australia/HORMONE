@@ -67,7 +67,6 @@ contains
 
 ! Use longer time step if using nested grids
   if(fmr_max>0.and.crdnt==2)then
-! !$omp parallel
    do n = 1, fmr_max
     if(fmr_lvl(n)==0)cycle
     if(n==1)then
@@ -75,7 +74,8 @@ contains
     else
      jb=min(2**(fmr_max-n+1),je) ; kb=min(2**(fmr_max-n+1),ke)
     end if
-! !$omp do private(i,j,k) collapse(3)
+!$omp parallel
+!$omp do private(i,j,k) collapse(3)
     do k = ks_global, ke_global, kb
      do j = js_global, je_global, jb
       do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1
@@ -86,9 +86,9 @@ contains
       end do
      end do
     end do
-! !$omp end do
+!$omp end do
+!$omp end parallel
    end do
-! !$omp end parallel
   end if
 
   dt = courant * minval(dti)

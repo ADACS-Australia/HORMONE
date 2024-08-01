@@ -75,7 +75,7 @@ contains
     else
      jb=min(2**(fmr_max-n+1),je) ; kb=min(2**(fmr_max-n+1),ke)
     end if
-!$omp do private(i,j,k)
+!$omp do private(i,j,k) collapse(2)
     do k = ks_global, ke_global, kb
      do j = js_global, je_global, jb
       do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1

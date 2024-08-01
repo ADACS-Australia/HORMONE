@@ -76,7 +76,9 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
 
 !$omp parallel
  do grungen = 1, grktype
-!$omp single
+  !$omp barrier
+
+  !$omp single
   ! Perform MPI neighbour exchange
   call exchange_gravity_mpi
   call get_runge_coeff(grungen,grktype,faco,fact,facn)
@@ -86,6 +88,8 @@ subroutine hyperbolic_gravity_step(cgrav_now,cgrav_old,dtg)
 
 ! First set flux and source term
   call get_lapphi_hgsrc(grvphi,gsrc,lapphi,hgsrc)
+
+  !$omp barrier
 
 !$omp do private (i,j,k) collapse(3)
   do k = ks,ke

@@ -65,30 +65,30 @@ contains
 !$omp end parallel do
   end if
 
-! Use longer time step if using nested grids
-  if(fmr_max>0.and.crdnt==2)then
-!$omp parallel
-   do n = 1, fmr_max
-    if(fmr_lvl(n)==0)cycle
-    if(n==1)then
-     jb=je_global;kb=ke_global
-    else
-     jb=min(2**(fmr_max-n+1),je) ; kb=min(2**(fmr_max-n+1),ke)
-    end if
-!$omp do private(i,j,k) collapse(3)
-    do k = ks_global, ke_global, kb
-     do j = js_global, je_global, jb
-      do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1
-       if (is_my_domain(i,j,k)) then
-        call dti_cell(i,j,k,dti,jb=jb,kb=kb)
-        if(gravswitch==3)call dtgrav_cell(i,j,k,dtg,cgrav,jb=jb,kb=kb)
-       endif
-      end do
-     end do
-    end do
-!$omp end do
-   end do
-!$omp end parallel
+! ! Use longer time step if using nested grids
+!   if(fmr_max>0.and.crdnt==2)then
+! !$omp parallel
+!    do n = 1, fmr_max
+!     if(fmr_lvl(n)==0)cycle
+!     if(n==1)then
+!      jb=je_global;kb=ke_global
+!     else
+!      jb=min(2**(fmr_max-n+1),je) ; kb=min(2**(fmr_max-n+1),ke)
+!     end if
+! !$omp do private(i,j,k) collapse(3)
+!     do k = ks_global, ke_global, kb
+!      do j = js_global, je_global, jb
+!       do i = is_global+sum(fmr_lvl(0:n-1)), is_global+sum(fmr_lvl(0:n))-1
+!        if (is_my_domain(i,j,k)) then
+!         call dti_cell(i,j,k,dti,jb=jb,kb=kb)
+!         if(gravswitch==3)call dtgrav_cell(i,j,k,dtg,cgrav,jb=jb,kb=kb)
+!        endif
+!       end do
+!      end do
+!     end do
+! !$omp end do
+!    end do
+! !$omp end parallel
   end if
 
   dt = courant * minval(dti)

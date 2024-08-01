@@ -89,7 +89,7 @@ contains
 ! !$omp end do
 !    end do
 ! !$omp end parallel
-  end if
+  ! end if
 
   dt = courant * minval(dti)
 

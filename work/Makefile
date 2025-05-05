@@ -51,11 +51,8 @@ STATIC =
 endif
 
 PETSC_PC = $(shell pkg-config --path petsc || pkg-config --path PETSc || if [ -n "${PETSC_DIR}" ] && [ -d "${PETSC_DIR}" ]; then find "${PETSC_DIR}" -type f -iname petsc.pc 2>/dev/null | head -n 1; fi)
-# PETSC_INCLUDE ?= $(shell pkg-config --cflags $(PETSC_PC) 2>/dev/null)
-# PETSC_LDFLAGS ?= $(shell pkg-config $(STATIC) --libs $(PETSC_PC) 2>/dev/null)
-
-PETSC_INCLUDE=-Wdate-time -D_FORTIFY_SOURCE=3 -I/usr/lib/petscdir/petsc3.19/x86_64-linux-gnu/include
-PETSC_LDFLAGS=-L/usr/lib/petscdir/petsc3.19/x86_64-linux-gnu-real/lib -lpetsc
+PETSC_INCLUDE ?= $(shell pkg-config --cflags $(PETSC_PC) 2>/dev/null)
+PETSC_LDFLAGS ?= $(shell pkg-config $(STATIC) --libs $(PETSC_PC) 2>/dev/null)
 
 LDFLAGS += $(PETSC_LDFLAGS)
 FPPFLAG += -DUSE_PETSC $(PETSC_INCLUDE)
@@ -116,7 +113,7 @@ ascii: $(TARGETA)
 lc: $(TARGETL)
 
 $(TARGET): $(OBJ_F)
-	$(FC) $(FCFLAG) $(LDFLAGS) -o $@ $(OBJ_F)
+	$(FC) $(FCFLAG) -o $@ $(OBJ_F) $(LDFLAGS)
 
 $(TARGETA): $(OBJA_F)
 	$(FC) $(FCFLAG) -o $@ $(OBJA_F)

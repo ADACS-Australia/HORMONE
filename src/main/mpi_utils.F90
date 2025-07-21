@@ -22,7 +22,7 @@ module mpi_utils
   subroutine init_mpi()
 #ifdef MPI
     integer :: ierr
-    call MPI_INIT(ierr)
+    call MPI_INIT_THREAD(MPI_THREAD_FUNNELED, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
 #else

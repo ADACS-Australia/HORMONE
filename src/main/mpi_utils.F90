@@ -21,8 +21,22 @@ module mpi_utils
 
   subroutine init_mpi()
 #ifdef MPI
-    integer :: ierr
-    call MPI_INIT_THREAD(MPI_THREAD_FUNNELED, ierr)
+    integer :: ierr, provided_level
+    call MPI_INIT_THREAD(MPI_THREAD_FUNNELED, provided_level, ierr)
+    if (myrank == 0) then
+        select case (provided_level)
+        case (MPI_THREAD_SINGLE)
+            print*, 'MPI thread support: MPI_THREAD_SINGLE.'
+        case (MPI_THREAD_FUNNELED)
+            print*, 'MPI thread support: MPI_THREAD_FUNNELED.'
+        case (MPI_THREAD_SERIALIZED)
+            print*, 'MPI thread support: MPI_THREAD_SERIALIZED.'
+        case (MPI_THREAD_MULTIPLE)
+            print*, 'MPI thread support: MPI_THREAD_MULTIPLE.'
+        case default
+            print*, 'MPI thread support: unknown thread level: ', provided_level
+        end select
+    endif
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
 #else

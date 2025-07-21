@@ -22,7 +22,9 @@ module mpi_utils
   subroutine init_mpi()
 #ifdef MPI
     integer :: ierr, provided_level
-    call MPI_INIT_THREAD(MPI_THREAD_FUNNELED, provided_level, ierr)
+    integer, parameter :: requested_level = MPI_THREAD_FUNNELED
+
+    call MPI_INIT_THREAD(requested_level, provided_level, ierr)
     if (myrank == 0) then
         select case (provided_level)
         case (MPI_THREAD_SINGLE)
@@ -36,6 +38,9 @@ module mpi_utils
         case default
             print*, 'MPI thread support: unknown thread level: ', provided_level
         end select
+        if (provided_level /= requested_level) then
+            print*, 'WARNING: MPI unable to provide requested level of thread support', requested_level
+        endif
     endif
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
